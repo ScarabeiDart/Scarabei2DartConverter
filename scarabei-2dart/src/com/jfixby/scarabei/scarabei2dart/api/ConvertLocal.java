@@ -219,6 +219,7 @@ public class ConvertLocal {
 		string = string.replaceAll("HTTPS", "Https");
 		string = string.replaceAll("HTTP", "Http");
 		string = string.replaceAll("RSA", "Rsa");
+		string = string.replaceAll("SSL", "Ssl");
 
 		final StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < string.length(); i++) {
@@ -262,6 +263,11 @@ public class ConvertLocal {
 // javaCode = javaCode.replaceAll("static", "");
 
 		javaCode = javaCode.replaceAll("final ", " ");
+		javaCode = javaCode.replaceAll("public", " ");
+		javaCode = javaCode.replaceAll("private", " ");
+
+		javaCode = javaCode.replaceAll(" long ", " int ");
+
 		javaCode = javaCode.replaceAll("@Override", "");
 		javaCode = javaCode.replaceAll("\\? extends", "");
 		javaCode = javaCode.replaceAll("\\? super", "");
@@ -286,25 +292,34 @@ public class ConvertLocal {
 		javaCode = javaCode.replaceAll("1d", "1");
 		javaCode = javaCode.replaceAll("2d", "2");
 
+		javaCode = javaCode.replaceAll("interface", " abstract class ");
+
+//
+
 		javaCode = javaCode.replaceAll("java.io.OutputStream", "DartOutputStream");
 
 		javaCode = javaCode.replaceAll("@SuppressWarnings", "//@SuppressWarnings");
+		javaCode = javaCode.replaceAll("import", "//import");
+		javaCode = javaCode.replaceAll("package", "//package");
 
-// final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "cd \"C:\\Program Files\\Microsoft SQL Server\" && dir");
-// final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "ping 8.8.8.8");
-// execute("ping 8.8.8.8");
-// execute("dir dartConverter\\lib");
-		final File tmpJava = LocalFileSystem.ApplicationHome().child("input.java");
-		final File dartResult = LocalFileSystem.ApplicationHome().child("output.dart");
-		tmpJava.writeString(javaCode);
-		execute("dart dartConverter\\lib\\java2dart.dart");
-		tmpJava.delete();
-// execute("dir");
-		final String result = dartResult.readToString();
-		dartResult.delete();
-// Sys.exit();
+		if (false) {
+			// final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "cd \"C:\\Program Files\\Microsoft SQL Server\" &&
+			// dir");
+			// final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "ping 8.8.8.8");
+			// execute("ping 8.8.8.8");
+			// execute("dir dartConverter\\lib");
+			final File tmpJava = LocalFileSystem.ApplicationHome().child("input.java");
+			final File dartResult = LocalFileSystem.ApplicationHome().child("output.dart");
+			tmpJava.writeString(javaCode);
+			execute("dart dartConverter\\lib\\java2dart.dart");
+			tmpJava.delete();
+			// execute("dir");
+			final String result = dartResult.readToString();
+			dartResult.delete();
+			// Sys.exit();
+		}
 
-		return result;
+		return javaCode;
 	}
 
 	private static void execute (final String cmd) throws IOException {

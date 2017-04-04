@@ -12,6 +12,7 @@ import com.jfixby.scarabei.api.file.File;
 import com.jfixby.scarabei.api.file.FilesList;
 import com.jfixby.scarabei.api.file.LocalFileSystem;
 import com.jfixby.scarabei.api.log.L;
+import com.jfixby.scarabei.api.sys.Sys;
 import com.jfixby.scarabei.api.util.path.RelativePath;
 
 public class ConvertScarabeiAPI {
@@ -24,6 +25,7 @@ public class ConvertScarabeiAPI {
 
 	public static void main (final String[] a) throws IOException {
 		ScarabeiDesktop.deploy();
+		Sys.exit();
 
 		final List<String> reposToProcess = Collections.newList();
 
