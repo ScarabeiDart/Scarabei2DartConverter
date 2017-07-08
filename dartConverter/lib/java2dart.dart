@@ -1,7 +1,6 @@
 // Copyright 2014 Stefan Matthias Aust. Licensed under http://opensource.org/licenses/MIT.
 library java2dart;
 
-import 'dart:convert';
 import 'dart:io';
 
 class Scanner {
@@ -15,27 +14,32 @@ class Scanner {
   /// Constructs a new scanner to tokenize [source].
   Scanner(String source) {
     _matches = new RegExp(
-        '\\s+|//.*\$|/\\*[\\s\\S]*?\\*/|'             // whitespace & comments
-            '(0x[0-9a-fA-F]+|'                            // numbers
-            '(?:\\d+(?:\\.\\d*)?|\\.\\d+)'                // numbers
-            '(?:[eE][-+]?\\d+)?[lLfF]?|'                  // numbers
-            '[\\w\$_]+|'                                  // names & keywords
-            '"(?:\\\\.|[^"])*?"|\'(?:\\\\.|[^\'])+?\'|'   // strings & characters
-            '&&|\\|\\||\\+\\+|--|'                        // operators
-            '[+\\-*/%&^|]=?|<<=?|>>>?=?|[=<>!]=?|~|'      // operators
-            '[.]{3}|[.,;()[\\]{}?:])|(.)',                // syntax
-        multiLine: true).allMatches(source).iterator;
+        '\\s+|//.*\$|/\\*[\\s\\S]*?\\*/|' // whitespace & comments
+            '(0x[0-9a-fA-F]+|' // numbers
+            '(?:\\d+(?:\\.\\d*)?|\\.\\d+)' // numbers
+            '(?:[eE][-+]?\\d+)?[lLfF]?|' // numbers
+            '[\\w\$_]+|' // names & keywords
+            '"(?:\\\\.|[^"])*?"|\'(?:\\\\.|[^\'])+?\'|' // strings & characters
+            '&&|\\|\\||\\+\\+|--|' // operators
+            '[+\\-*/%&^|]=?|<<=?|>>>?=?|[=<>!]=?|~|' // operators
+            '[.]{3}|[.,;()[\\]{}?:])|(.)', // syntax
+        multiLine: true)
+        .allMatches(source)
+        .iterator;
     advance();
   }
 
   /// Advances [currentToken] to the next token in the source.
   String advance() {
     String token = currentToken;
+    print(token);
     while (_matches.moveNext()) {
       Match m = _matches.current;
       if (m[1] != null) {
-
-        position = m.input.substring(0, m.start).split("\n").length;
+        position = m.input
+            .substring(0, m.start)
+            .split("\n")
+            .length;
         currentToken = m[1];
         return token;
       }
@@ -71,7 +75,9 @@ class Scanner {
   bool get isNumber => currentToken.startsWith(new RegExp("\\.?[\\d]"));
 
   /// Returns true if [currentToken] is a string.
-  bool get isString => currentToken.isNotEmpty && (currentToken[0] == '"' || currentToken[0] == "'");
+  bool get isString =>
+      currentToken.isNotEmpty &&
+          (currentToken[0] == '"' || currentToken[0] == "'");
 
   void error(String message) {
     throw new Exception(message);
@@ -83,7 +89,10 @@ class Parser extends Scanner {
   Parser(String source) : super(source);
 
   /// Returns [node] after parsing a semicolon.
-  andSemicolon(node) { expect(";"); return node; }
+  andSemicolon(node) {
+    expect(";");
+    return node;
+  }
 
   /// Returns the result of calling [parser] if [at(token)] is true and null otherwise.
   parseIfAt(String token, parser()) => at(token) ? parser() : null;
@@ -108,7 +117,7 @@ class Parser extends Scanner {
 
   /// Returns a list of results from calling [parser], separated by [separator].
   List parseList(parser(), {String ifAt, String separator: ","}) {
-    if  (ifAt == null || at(ifAt)) {
+    if (ifAt == null || at(ifAt)) {
       var results = [parser()];
       while (at(separator)) {
         results.add(parser());
@@ -123,7 +132,8 @@ class Parser extends Scanner {
 
   // ["package" qualifiedName ";"] { importStatement } { typeDeclaration }
   parseCompilationUnit() {
-    String packageName = parseIfAt("package", () => andSemicolon(parseQualifiedName()));
+    String packageName = parseIfAt(
+        "package", () => andSemicolon(parseQualifiedName()));
     var imports = parseWhile("import", parseImportStatement);
     var declarations = parseWhileNot("", parseTypeDeclaration);
     return [AST.CompilationUnit, packageName, imports, declarations];
@@ -149,7 +159,15 @@ class Parser extends Scanner {
     error("expected class or interface but found $currentToken.");
   }
 
-  static const modifierTokens = const["abstract", "public", "protected", "private", "static", "final", "synchronized"];
+  static const modifierTokens = const[
+    "abstract",
+    "public",
+    "protected",
+    "private",
+    "static",
+    "final",
+    "synchronized"
+  ];
 
   parseModifiers() {
     var modifiers = [];
@@ -164,16 +182,31 @@ class Parser extends Scanner {
     var className = parseName();
     var typeParameters = parseIfAt("<", parseTypeParameters);
     var superclassType = parseIfAt("extends", parseType);
-    var interfaceTypes = parseList(parseType, ifAt:"implements");
-    return [AST.Class, modifiers, className, typeParameters, superclassType, interfaceTypes, parseClassOrInterfaceBody()];
+    var interfaceTypes = parseList(parseType, ifAt: "implements");
+    return [
+      AST.Class,
+      modifiers,
+      className,
+      typeParameters,
+      superclassType,
+      interfaceTypes,
+      parseClassOrInterfaceBody()
+    ];
   }
 
   // [modifiers] [typeParameter] "interface" name ["extends" type {"," type}] interfaceBody
   parseInterfaceDeclaration(modifiers) {
     var interfaceName = parseName();
     var typeParameters = parseIfAt("<", parseTypeParameters);
-    var interfaceTypes = parseList(parseType, ifAt:"extends");
-    return [AST.Interface, modifiers, interfaceName, typeParameters, interfaceTypes, parseClassOrInterfaceBody()];
+    var interfaceTypes = parseList(parseType, ifAt: "extends");
+    return [
+      AST.Interface,
+      modifiers,
+      interfaceName,
+      typeParameters,
+      interfaceTypes,
+      parseClassOrInterfaceBody()
+    ];
   }
 
   // "{" {memberDeclaration} "}"
@@ -186,7 +219,7 @@ class Parser extends Scanner {
   parseMemberDeclaration() {
     parseIfAt("<", parseTypeParameters); // ignored
     var modifiers = parseModifiers();
-    if (modifiers[1].length == 1 &&  modifiers[1][0] == "static" && at("{")) {
+    if (modifiers[1].length == 1 && modifiers[1][0] == "static" && at("{")) {
       return [AST.StaticInitializer, parseStatementBlock()];
     }
     if (at("class")) return parseClassDeclaration(modifiers);
@@ -196,7 +229,14 @@ class Parser extends Scanner {
       var parameters = parseParameterList();
       var throws = parseThrowsDeclaration();
       expect("{");
-      return [AST.Constructor, modifiers, name, parameters, throws, parseStatementBlock()];
+      return [
+        AST.Constructor,
+        modifiers,
+        name,
+        parameters,
+        throws,
+        parseStatementBlock()
+      ];
     }
     var type = parseArrayType(parseType(name));
     name = parseName();
@@ -211,7 +251,8 @@ class Parser extends Scanner {
       } else {
         statements = [];
       }
-      return [AST.Method, modifiers, type, name, parameters, throws, statements];
+      return [AST.Method, modifiers, type, name, parameters, throws, statements
+      ];
     } else { // must be variable declaration
       var declarations = parseVariableDeclarations(modifiers, type, name);
       expect(";");
@@ -245,7 +286,8 @@ class Parser extends Scanner {
   parseVariableDeclarations(modifiers, type, name) {
     var type2 = parseArrayType(type);
     var init = parseInitializer();
-    var declarations = [[AST.VariableDeclaration, modifiers, type2, name, init]];
+    var declarations = [[AST.VariableDeclaration, modifiers, type2, name, init]
+    ];
     while (at(",")) {
       name = parseName();
       type2 = parseArrayType(type);
@@ -282,9 +324,11 @@ class Parser extends Scanner {
 
   // types ----------------------------------------------------------------------------------------
 
-  static const primitiveTypes = const["boolean", "byte", "char", "short", "int", "float", "long", "double", "void"];
+  static const primitiveTypes = const[
+    "boolean", "byte", "char", "short", "int", "float", "long", "double", "void"
+  ];
 
-  parseType([String name=""]) {
+  parseType([String name = ""]) {
     if (name == "") {
       name = advance();
     }
@@ -409,7 +453,9 @@ class Parser extends Scanner {
   }
 
   parseForStatement() {
-    var a = [], b, c = [];
+    var a = [],
+        b,
+        c = [];
     expect("(");
     if (!at(";")) {
       var e = parseExpression();
@@ -482,7 +528,8 @@ class Parser extends Scanner {
 
   // expressions -----------------------------------------------------------------------------------------------------
 
-  static const assignmentOperators = const["=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", ">>>="];
+  static const assignmentOperators = const[
+    "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", ">>>="];
 
   parseExpression() {
     var e = parseConditionalExpression();
@@ -550,7 +597,8 @@ class Parser extends Scanner {
         e = ["==", e, parseRelationalExpression()];
       } else if (at("!=")) {
         e = ["!=", e, parseRelationalExpression()];
-      } else return e;
+      } else
+        return e;
     }
   }
 
@@ -560,13 +608,18 @@ class Parser extends Scanner {
       if (at("<")) {
         // hack: could be a variable declaration (still missing "?" case)
         var e2 = parseBitShiftExpression();
-        if (e[0] == "variable" && e2[0] == "variable" && (currentToken == "," || currentToken == ">")) {
+        if (e[0] == "variable" && e2[0] == "variable" &&
+            (currentToken == "," || currentToken == ">")) {
           var parameters = [e2[1]];
           while (!at(">")) {
             expect(",");
             parameters.add(parseQualifiedName());
           }
-          var type = parseArrayType(["generic_type", parseSimpleType(e[1]), ["type_parameters", parameters]]);
+          var type = parseArrayType([
+            "generic_type",
+            parseSimpleType(e[1]),
+            ["type_parameters", parameters]
+          ]);
           var name = parseName();
           return parseVariableDeclarations(null, type, name);
         }
@@ -579,7 +632,8 @@ class Parser extends Scanner {
         e = [">=", e, parseBitShiftExpression()];
       } else if (at("instanceof")) {
         e = ["instanceof", e, parseBitShiftExpression()];
-      } else return e;
+      } else
+        return e;
     }
   }
 
@@ -592,7 +646,8 @@ class Parser extends Scanner {
         e = [">>", e, parseAdditionExpression()];
       } else if (at(">>>")) {
         e = [">>>", e, parseAdditionExpression()];
-      } else return e;
+      } else
+        return e;
     }
   }
 
@@ -603,7 +658,8 @@ class Parser extends Scanner {
         e = ["+", e, parseMultiplicationExpression()];
       } else if (at("-")) {
         e = ["-", e, parseMultiplicationExpression()];
-      } else return e;
+      } else
+        return e;
     }
   }
 
@@ -616,7 +672,8 @@ class Parser extends Scanner {
         e = ["/", e, parsePrefixExpression()];
       } else if (at("%")) {
         e = ["%", e, parsePrefixExpression()];
-      } else return e;
+      } else
+        return e;
     }
   }
 
@@ -663,7 +720,8 @@ class Parser extends Scanner {
         // hack: could be a variable declaration
         if (e[0] == "variable" && at("]")) {
           var type = ["array_type", parseSimpleType(e[1])];
-          return parseVariableDeclarations(null, parseArrayType(type), parseName());
+          return parseVariableDeclarations(
+              null, parseArrayType(type), parseName());
         }
         var index = parseExpression();
         expect("]");
@@ -675,7 +733,8 @@ class Parser extends Scanner {
         } else {
           e = ["field", e, name];
         }
-      } else return e;
+      } else
+        return e;
     }
   }
 
@@ -728,7 +787,8 @@ class Parser extends Scanner {
       expect(")");
       // need to distinguish expression in parentheses from a cast
       if (e[0] == "variable") {
-        if (isName || isNumber || isString || literalFirst.contains(currentToken)) {
+        if (isName || isNumber || isString ||
+            literalFirst.contains(currentToken)) {
           return ["cast", e[1], parsePrefixExpression()];
         }
       }
@@ -774,34 +834,74 @@ class Parser extends Scanner {
 
 abstract class AST {
   // declarations
-  static const CompilationUnit = "unit"; /* String packageName, List<AST> imports, List<AST> declarations */
-  static const Import = "import"; /* String qualifiedName */
-  static const Modifiers = "modifiers"; /* List<String> modifiers */
-  static const Class = "class"; /* AST modifiers, String className, AST typeParameters, AST superclassType, List<AST> interfaceTypes, List<AST> classBody */
-  static const Interface = "interface"; /* AST modifiers, String interfaceName, AST typeParameters, List<AST> interfaceTypes, List<AST> classBody */
-  static const StaticInitializer = "static_initializer"; /* AST block */
-  static const Constructor = "constructor"; /* AST modifiers, String constructorName, List<AST> parameters, List<AST> throws, AST block */
-  static const Method = "method"; /* AST modifiers, AST returnType, String methodName, List<AST> parameters, List<AST> throws, AST block */
-  static const Parameter = "parameter"; /* AST type, AST name */
-  static const RestParameter = "rest_parameter"; /* AST type, AST name */
-  static const VariableDeclaration = "variable_declaration"; /* AST modifiers, AST type, String name, AST initializer */
-  static const VariableDeclarations = "variable_declarations"; /* List<AST> declarations */
-  static const ArrayInitializer = "array"; /* List<AST> elements */
+  static const CompilationUnit = "unit";
+
+  /* String packageName, List<AST> imports, List<AST> declarations */
+  static const Import = "import";
+
+  /* String qualifiedName */
+  static const Modifiers = "modifiers";
+
+  /* List<String> modifiers */
+  static const Class = "class";
+
+  /* AST modifiers, String className, AST typeParameters, AST superclassType, List<AST> interfaceTypes, List<AST> classBody */
+  static const Interface = "interface";
+
+  /* AST modifiers, String interfaceName, AST typeParameters, List<AST> interfaceTypes, List<AST> classBody */
+  static const StaticInitializer = "static_initializer";
+
+  /* AST block */
+  static const Constructor = "constructor";
+
+  /* AST modifiers, String constructorName, List<AST> parameters, List<AST> throws, AST block */
+  static const Method = "method";
+
+  /* AST modifiers, AST returnType, String methodName, List<AST> parameters, List<AST> throws, AST block */
+  static const Parameter = "parameter";
+
+  /* AST type, AST name */
+  static const RestParameter = "rest_parameter";
+
+  /* AST type, AST name */
+  static const VariableDeclaration = "variable_declaration";
+
+  /* AST modifiers, AST type, String name, AST initializer */
+  static const VariableDeclarations = "variable_declarations";
+
+  /* List<AST> declarations */
+  static const ArrayInitializer = "array";
+
+  /* List<AST> elements */
 
   // types
-  static const GenericType = "generic_type"; /* AST type, AST parameters */
-  static const PrimitiveType = "primitive_type"; /* String name */
-  static const ReferenceType = "reference_type"; /* String qualifiedName */
-  static const ArrayType = "array_type"; /* AST type */
-  static const TypeParameters = "type_parameters"; /* List<String> parameters */
+  static const GenericType = "generic_type";
+
+  /* AST type, AST parameters */
+  static const PrimitiveType = "primitive_type";
+
+  /* String name */
+  static const ReferenceType = "reference_type";
+
+  /* String qualifiedName */
+  static const ArrayType = "array_type";
+
+  /* AST type */
+  static const TypeParameters = "type_parameters";
+
+  /* List<String> parameters */
 
   // statements
-  static const Block = "block"; /* List<AST> statements */
+  static const Block = "block";
+
+  /* List<AST> statements */
   static const Assert = "assert";
   static const Break = "break";
   static const Continue = "continue";
   static const DoWhile = "dowhile";
-  static const Expression = "expression"; /* AST expression */
+  static const Expression = "expression";
+
+  /* AST expression */
   static const For = "for";
   static const ForEach = "foreach";
   static const If = "if";
@@ -864,15 +964,20 @@ class Translator {
           emit("import 'java.dart';");
         }
         // to replace simple names with qualified names
-        _imports[node[1].split(".").last] = node[1].replaceAll(".", "_");
+        _imports[node[1]
+            .split(".")
+            .last] = node[1].replaceAll(".", "_");
       },
       AST.Class: (node) {
         newline();
         var abst = node[1][1].contains("abstract") ? "abstract " : "";
         var name = node[2];
         var type = node[3] != null ? translate(node[3]) : "";
-        var ext = node[4] != null ? " extends ${translate(node[4]).replaceAll(".", "_")}" : "";
-        var imp = node[5] != null ? " with ${node[5].map(translate).join(", ").replaceAll(".", "_")}" : "";
+        var ext = node[4] != null ? " extends ${translate(node[4]).replaceAll(
+            ".", "_")}" : "";
+        var imp = node[5] != null ? " with ${node[5].map(translate)
+            .join(", ")
+            .replaceAll(".", "_")}" : "";
         emit("${abst}class $name$type$ext$imp");
         _resolver.beginScope();
         emit("{");
@@ -888,7 +993,9 @@ class Translator {
         newline();
         var name = node[2];
         var type = node[3] != null ? translate(node[3]) : "";
-        var imp = node[4] != null ? " with ${node[4].map(translate).join(", ").replaceAll(".", "_")}" : "";
+        var imp = node[4] != null ? " with ${node[4].map(translate)
+            .join(", ")
+            .replaceAll(".", "_")}" : "";
         emit("abstract class $name$type$imp");
         _resolver.beginScope();
         emit("{");
@@ -940,7 +1047,8 @@ class Translator {
         var mods = node[1] != null ? translate(node[1]) : "";
         var type = translate(node[2]);
         var name = _dartName(node[3]);
-        emit("$mods$type $name(${node[4].map(translate).join(", ")})${node[6].isEmpty ? ";": ""}");
+        emit("$mods$type $name(${node[4].map(translate).join(", ")})${node[6]
+            .isEmpty ? ";" : ""}");
         if (node[6].isNotEmpty) {
           emit("{");
           indent();
@@ -951,12 +1059,14 @@ class Translator {
         _resolver.endScope();
       },
       AST.Parameter: (node) {
-        var type = translate(node[1]), name = _dartName(node[2]);
+        var type = translate(node[1]),
+            name = _dartName(node[2]);
         _resolver.bind(name, type);
         return "$type $name";
       },
       AST.RestParameter: (node) {
-        var type = translate(node[1]), name = _dartName(node[2]);
+        var type = translate(node[1]),
+            name = _dartName(node[2]);
         _resolver.bind(name, type);
         return "List<$type> $name /*XXX*/";
       },
@@ -1000,8 +1110,10 @@ class Translator {
         if (node[1] != null && node[2] == "charAt" && node[3].length == 1) {
           return "$receiver.codeUnitAt(${_strip(translate(node[3][0]))})";
         }
-        if (node[1] != null && node[2] == "equalsIgnoreCase" && node[3].length == 1) {
-          return "java_equalsIgnoreCase($receiver, ${_strip(translate(node[3][0]))})";
+        if (node[1] != null && node[2] == "equalsIgnoreCase" &&
+            node[3].length == 1) {
+          return "java_equalsIgnoreCase($receiver, ${_strip(
+              translate(node[3][0]))})";
         }
         if (node[1] != null && node[2] == "append" && node[3].length == 1) {
           if (_resolver.resolve(node[1]) == "StringBuffer") {
@@ -1009,7 +1121,8 @@ class Translator {
           }
         }
         if (receiver != "") receiver += ".";
-        return "$receiver${_dartName(node[2])}(${node[3].map(translate).map(_strip).join(", ")})";
+        return "$receiver${_dartName(node[2])}(${node[3].map(translate).map(
+            _strip).join(", ")})";
       },
       "field": (node) {
         return "${translate(node[1])}.${_dartName(node[2])}";
@@ -1030,10 +1143,15 @@ class Translator {
         return "new List<${translate(node[1])}>(${translate(node[2])})";
       },
       "new_array_from": (node) {
-        return "new List<${translate(node[1])}>.from([${node[2].map(translate).map(_strip).join(", ")}])";
+        return "new List<${translate(node[1])}>.from([${node[2]
+            .map(translate)
+            .map(_strip)
+            .join(", ")}])";
       },
       "new_instance": (node) {
-        return "new ${translate(node[1])}(${node[2].map(translate).map(_strip).join(", ")})";
+        return "new ${translate(node[1])}(${node[2].map(translate)
+            .map(_strip)
+            .join(", ")})";
       },
       // TODO use precedence to omit unneeded parentheses
       "+": _binaryExpression("+"),
@@ -1062,21 +1180,40 @@ class Translator {
       "/=": _binaryExpression("~/="), // int only
       "&=": _binaryExpression("&="),
       "|=": _binaryExpression("|="),
-      "[]": (node) { return "${translate(node[1])}[${_strip(translate(node[2]))}]"; },
-      "p++": (node) { return "${translate(node[1])}++"; },
-      "p--": (node) { return "${translate(node[1])}--"; },
-      "++p": (node) { return "(++${translate(node[1])})"; },
-      "--p": (node) { return "(--${translate(node[1])})"; },
-      "!": (node) { return "(!${translate(node[1])})"; },
-      "~": (node) { return "(~${translate(node[1])})"; },
-      "-p": (node) { return "(-${translate(node[1])})"; },
-      "+p": (node) { return "(+${translate(node[1])})"; },
+      "[]": (node) {
+        return "${translate(node[1])}[${_strip(translate(node[2]))}]";
+      },
+      "p++": (node) {
+        return "${translate(node[1])}++";
+      },
+      "p--": (node) {
+        return "${translate(node[1])}--";
+      },
+      "++p": (node) {
+        return "(++${translate(node[1])})";
+      },
+      "--p": (node) {
+        return "(--${translate(node[1])})";
+      },
+      "!": (node) {
+        return "(!${translate(node[1])})";
+      },
+      "~": (node) {
+        return "(~${translate(node[1])})";
+      },
+      "-p": (node) {
+        return "(-${translate(node[1])})";
+      },
+      "+p": (node) {
+        return "(+${translate(node[1])})";
+      },
       "cast": (node) {
         //return "(${translate(node[2])} as ${translate(node[1])})";
         return translate(node[2]);
       },
       "?:": (node) {
-        return "(${translate(node[1])} ? ${translate(node[2])} : ${translate(node[3])})";
+        return "(${translate(node[1])} ? ${translate(node[2])} : ${translate(
+            node[3])})";
       },
       "if": (node) {
         emit("if (${_strip(translate(node[1]))}) {");
@@ -1101,8 +1238,10 @@ class Translator {
       "for": (node) {
         var i = [];
         node[1].forEach((n) {
-          if (n[0] == 'variable_declarations') i.addAll(n[1]);
-          else i.add(n);
+          if (n[0] == 'variable_declarations')
+            i.addAll(n[1]);
+          else
+            i.add(n);
         });
         if (i.length > 1) {
           // Dart doesn't like multiple declarations in for so we move them
@@ -1153,7 +1292,8 @@ class Translator {
         emit("}");
       },
       "catch": (node) {
-        emit("} on ${translate(node[1][1])} catch (${_dartName(node[1][2])}) {");
+        emit(
+            "} on ${translate(node[1][1])} catch (${_dartName(node[1][2])}) {");
         indent();
         translate(node[2]);
         dedent();
@@ -1198,14 +1338,15 @@ class Translator {
       "throw": (node) {
         emit("throw ${translate(node[1])};");
       },
-      "pass": (node) {
-      },
+      "pass": (node) {},
     };
     _resolver.beginScope();
   }
 
   Function _binaryExpression(String op) {
-    return (node) { return "(${translate(node[1])} $op ${translate(node[2])})"; };
+    return (node) {
+      return "(${translate(node[1])} $op ${translate(node[2])})";
+    };
   }
 
   String _dartType(String type) {
@@ -1219,7 +1360,7 @@ class Translator {
       "float": "double",
       "long": "int",
       "double": "double",
-      "void" : "void"
+      "void": "void"
     }[type];
   }
 
@@ -1250,9 +1391,13 @@ class Translator {
     _sink.writeln(line);
   }
 
-  void indent() { _indent++; }
+  void indent() {
+    _indent++;
+  }
 
-  void dedent() { _indent--; }
+  void dedent() {
+    _indent--;
+  }
 
   translate(node) {
     return _funcs[node[0]](node);
@@ -1290,15 +1435,14 @@ class Resolver {
 }
 
 void main(List<String> args) {
-  if (args.length > 0||true) {
-//    String inputJava = "D://[DEV]//[GIT-4]//Scarabei//scarabei-api//src//com//jfixby//scarabei//api//arrays//ArraysComponent.java";
-    String inputJava = "1.txt";
-    String outputJson = "/tmp/json";
-    var source = new File(inputJava).readAsStringSync();
-    var node = new Parser(source).parseCompilationUnit();
-    new File(outputJson).writeAsStringSync(JSON.encode(node));
-  } else {
-    var node = JSON.decode(new File("/tmp/json").readAsStringSync());
-    new Translator().translate(node);
-  }
+  String inputJava = "D://[DEV]//[GIT-4]//Scarabei//scarabei-api//src//com//jfixby//scarabei//api//arrays//Arrays.java";
+//    String inputJava = "1.txt";
+  String outputJson = "1.json";
+  var source = new File(inputJava).readAsStringSync();
+  source = source.replaceAll("final", "");
+  print(source);
+  var node = new Parser(source).parseCompilationUnit();
+  //new File(outputJson).writeAsStringSync();
+//    String json = JSON.encode(node)
+  new Translator().translate(node);
 }
