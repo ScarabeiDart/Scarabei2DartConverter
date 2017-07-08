@@ -5,6 +5,9 @@ dependencies {
              compile "com.google.code.gson:gson:2.8.0"
              compile "com.github.Scarabei.ScarabeiGson:scarabei-gson:$scarabeiGsonVersion"
              compile "com.github.Scarabei.ScarabeiRed:scarabei-red-desktop:$scarabeiRedVersion"
+	         compile group: 'org.antlr', name: 'antlr4-runtime', version: '4.7'
+	         
+             compile group: 'commons-cli', name: 'commons-cli', version: '1.2'
 	         
 
 }
