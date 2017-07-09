@@ -26,7 +26,7 @@ repositories {
 apply plugin: "java"
 apply plugin: "maven"
 
-sourceCompatibility = 1.8
+sourceCompatibility = 1.6
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 sourceSets {

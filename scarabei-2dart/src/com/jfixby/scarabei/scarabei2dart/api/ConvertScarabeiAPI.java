@@ -1,7 +1,9 @@
 
 package com.jfixby.scarabei.scarabei2dart.api;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import com.jfixby.scarabei.api.collections.Collections;
 import com.jfixby.scarabei.api.collections.List;
@@ -11,44 +13,79 @@ import com.jfixby.scarabei.api.file.FilesList;
 import com.jfixby.scarabei.api.file.LocalFileSystem;
 import com.jfixby.scarabei.api.log.L;
 import com.jfixby.scarabei.api.util.path.RelativePath;
-import com.jfixby.scarabei.scarabei2dart.CFG;
 
 public class ConvertScarabeiAPI {
 
 	private static final String DAANUU_XML = "daanuu.xml";
 	private static final String SETTINGS_GRADLE = "settings.gradle";
-	private static final String SCARABEI_PREFIX = "scarabei-api";
+	private static final String SCARABEI_PREFIX = "scarabei-";
 	private static final String PUBSEC = "pubspec.yaml";
+	private static final String BUILD_GRADLE = "build.gradle";
 
 	public static void main (final String[] a) throws IOException {
 		ScarabeiDesktop.deploy();
 
-		final File input = LocalFileSystem.newFile(CFG.inputPathString);
-		final File output = LocalFileSystem.newFile(CFG.outputPathString);
+		final List<String> reposToProcess = Collections.newList();
+
+		reposToProcess.add("D:\\\\[DEV]\\\\[GIT-4]\\\\Scarabei\\\\");
+		reposToProcess.add("D:\\\\[DEV]\\\\[GIT-3]\\\\ScarabeiRed\\\\");
+		reposToProcess.add("D:\\\\[DEV]\\\\[GIT-3]\\\\ScarabeiGson\\\\");
+		reposToProcess.add("D:\\\\[DEV]\\\\[GIT-3]\\\\ScarabeiAWS\\\\");
+		reposToProcess.add("D:\\\\[DEV]\\\\[GIT-3]\\\\ScarabeiAWS\\\\");
+
+// final File output = LocalFileSystem.ApplicationHome().child("out");
+		final File output = LocalFileSystem.ApplicationHome().parent();
 		final ProcessingArguments args = new ProcessingArguments();
 		args.templateFolder = LocalFileSystem.ApplicationHome().child("template");
 		args.output = output;
 		args.versionString = "1.0.0";
-		final FilesList projects = input.listAllChildren(file -> {
-			try {
-				return file.isFolder() && file.getName().toLowerCase().startsWith(SCARABEI_PREFIX);
-			} catch (final IOException e) {
-				e.printStackTrace();
-				return false;
-			}
-		});
 
-		convertProjects(projects, args);
+		processRepos(args, reposToProcess);
+
+// final File output = LocalFileSystem.newFile(CFG.outputPathString);
 
 // projects.print("input");
 // output.listAllChildren().print("output");
 	}
 
-	private static void convertProjects (final FilesList projects, final ProcessingArguments args) throws IOException {
+	private static void processRepos (final ProcessingArguments args, final List<String> reposToProcess) throws IOException {
+
+		final List<File> projects = Collections.newList();
+		for (final String repo : reposToProcess) {
+			final File input = LocalFileSystem.newFile(repo);
+			final FilesList pjs = input.listAllChildren(file -> {
+				try {
+					final boolean isScarabeiProject = file.isFolder() && file.getName().toLowerCase().startsWith(SCARABEI_PREFIX);
+					return isScarabeiProject && process(file);
+				} catch (final IOException e) {
+					e.printStackTrace();
+					return false;
+				}
+			});
+			projects.addAll(pjs);
+
+		}
+		convertProjects(projects, args);
+	}
+
+	private static boolean process (final File file) {
+		final String name = file.getName();
+		if (name.contains("api")) {
+			return true;
+		}
+		if (name.contains("red")) {
+			return true;
+		}
+		return false;
+	}
+
+	private static void convertProjects (final List<File> projects, final ProcessingArguments args) throws IOException {
+
+		projects.print("toPorcess");
 
 		final List<String> processedProjects = Collections.newList();
 		for (final File p : projects) {
-			if (p.getName().equals(SCARABEI_PREFIX)) {
+			if (true) {
 				args.project = p;
 				processProject(args);
 				processedProjects.add(args.outputProjectName);
@@ -68,10 +105,16 @@ public class ConvertScarabeiAPI {
 	private static void processProject (final ProcessingArguments args) throws IOException {
 // L.d("processing", args.project);
 
-		final File inputSources = args.project.child("src");
+// final File inputSources = args.project.child("src").child("com").child("jfixby").child("scarabei").child("api");
+		final File inputSources = args.project.child("src").child("com").child("jfixby").child("scarabei");
 		String outputProjectName = args.project.getName();
 		outputProjectName = outputProjectName.replaceFirst("scarabei-", "scarabei-dart-");
 		final File outputProject = args.output.child(outputProjectName);
+
+		final File gradleFileIn = args.project.child(BUILD_GRADLE);
+		final File gradleFileOut = outputProject.child(BUILD_GRADLE);
+
+		gradleFileIn.getFileSystem().copyFileToFile(gradleFileIn, gradleFileOut);
 
 		args.outputProjectName = outputProjectName;
 		args.outputProject = outputProject;
@@ -130,22 +173,59 @@ public class ConvertScarabeiAPI {
 			final RelativePath postfix = java.getAbsoluteFilePath().getRelativePath().splitAt(args.srcPrefix.size());
 
 			final File outputDartFile = libFolder.proceed(postfix).parent().child(java.nameWithoutExtension() + ".dart");
+			final File outputJavaFile = libFolder.proceed(postfix);
 
 			L.d("converting", java);
 			L.d("        to", outputDartFile);
 
-			final String javaCode = java.readToString();
-			final String dartCode = convert(args, javaCode);
-			outputDartFile.writeString(dartCode);
+			try {
+				final String javaCode = java.readToString();
+				outputJavaFile.writeString(javaCode);
+				final String dartCode = convert(args, javaCode);
+				outputDartFile.writeString(dartCode);
+			} catch (final IOException e) {
+				L.d(e);
+// Sys.exit();
+			}
+
 		}
 	}
 
-	private static String convert (final ProcessingArguments args, String javaCode) {
+	private static String convert (final ProcessingArguments args, final String javaCode) throws IOException {
 
-		javaCode = javaCode.replaceAll("public", "");
-		javaCode = javaCode.replaceAll("static", "");
+// javaCode = javaCode.replaceAll("public", "");
+// javaCode = javaCode.replaceAll("static", "");
 
-		return javaCode;
+// final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "cd \"C:\\Program Files\\Microsoft SQL Server\" && dir");
+// final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "ping 8.8.8.8");
+// execute("ping 8.8.8.8");
+// execute("dir dartConverter\\lib");
+		final File tmpJava = LocalFileSystem.ApplicationHome().child("input.java");
+		final File dartResult = LocalFileSystem.ApplicationHome().child("output.dart");
+		tmpJava.writeString(javaCode);
+		execute("dart dartConverter\\lib\\java2dart.dart");
+		tmpJava.delete();
+// execute("dir");
+		final String result = dartResult.readToString();
+		dartResult.delete();
+// Sys.exit();
+
+		return result;
+	}
+
+	private static void execute (final String cmd) throws IOException {
+		final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", cmd);
+		builder.redirectErrorStream(true);
+		final Process p = builder.start();
+		final BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+		String line;
+		while (true) {
+			line = r.readLine();
+			if (line == null) {
+				break;
+			}
+			System.out.println(line);
+		}
 	}
 
 }

@@ -1435,14 +1435,19 @@ class Resolver {
 }
 
 void main(List<String> args) {
-  String inputJava = "D://[DEV]//[GIT-4]//Scarabei//scarabei-api//src//com//jfixby//scarabei//api//arrays//Arrays.java";
+//  String inputJava = "D://[DEV]//[GIT-4]//Scarabei//scarabei-api//src//com//jfixby//scarabei//api//arrays//Arrays.java";
 //    String inputJava = "1.txt";
-  String outputJson = "1.json";
+//  String outputJson = "1.json";
+  String inputJava = "input.java";
+  String outputDart = "output.dart";
   var source = new File(inputJava).readAsStringSync();
-  source = source.replaceAll("final", "");
+//  source = source.replaceAll("final", "");
   print(source);
   var node = new Parser(source).parseCompilationUnit();
   //new File(outputJson).writeAsStringSync();
 //    String json = JSON.encode(node)
-  new Translator().translate(node);
+
+  var output = new File(outputDart);
+  StringSink out = output.openWrite();
+  new Translator(out).translate(node);
 }
