@@ -39,6 +39,7 @@ public class ConvertScarabeiAPI {
 		args.templateFolder = LocalFileSystem.ApplicationHome().child("template");
 		args.output = output;
 		args.versionString = "1.0.0";
+		args.output.clearFolder();
 
 		processRepos(args, reposToProcess);
 
@@ -70,10 +71,10 @@ public class ConvertScarabeiAPI {
 
 	private static boolean process (final File file) {
 		final String name = file.getName();
-		if (name.contains("api")) {
+		if (name.endsWith("i-api")) {
 			return true;
 		}
-		if (name.contains("red")) {
+		if (name.endsWith("i-red")) {
 			return true;
 		}
 		return false;
@@ -83,7 +84,7 @@ public class ConvertScarabeiAPI {
 
 		projects.print("toPorcess");
 
-		final List<String> processedProjects = Collections.newList();
+		final List<String> processedProjects = Collections.newList("scarabei-2dart");
 		for (final File p : projects) {
 			if (true) {
 				args.project = p;
@@ -112,9 +113,8 @@ public class ConvertScarabeiAPI {
 		final File outputProject = args.output.child(outputProjectName);
 
 		final File gradleFileIn = args.project.child(BUILD_GRADLE);
-		final File gradleFileOut = outputProject.child(BUILD_GRADLE);
 
-		gradleFileIn.getFileSystem().copyFileToFile(gradleFileIn, gradleFileOut);
+// gradleFileIn.getFileSystem().copyFileToFile(gradleFileIn, gradleFileOut);
 
 		args.outputProjectName = outputProjectName;
 		args.outputProject = outputProject;
@@ -123,7 +123,13 @@ public class ConvertScarabeiAPI {
 
 		outputProject.delete();
 		outputProject.makeFolder();
-
+		{
+			final File gradleTemplate = args.templateFolder.child(BUILD_GRADLE);
+			final String gradleTemplateString = gradleTemplate.readToString();
+			final String gradleString = gradleFileIn.readToString();
+			final File gradleFileOut = outputProject.child(BUILD_GRADLE);
+			gradleFileOut.writeString(gradleTemplateString + "\n" + gradleString);
+		}
 // final File outputSources = args.outputProject.child("src");
 		{
 			final File danuuXmlOutput = outputProject.child(DAANUU_XML);
@@ -170,17 +176,17 @@ public class ConvertScarabeiAPI {
 
 // args.inputJavaFiles.print("javaFiles");
 		for (final File java : args.inputJavaFiles) {
-			final RelativePath postfix = java.getAbsoluteFilePath().getRelativePath().splitAt(args.srcPrefix.size());
+			final RelativePath postfix = java.getAbsoluteFilePath().getRelativePath().splitAt(args.srcPrefix.size() + 1);
 
 			final File outputDartFile = libFolder.proceed(postfix).parent().child(java.nameWithoutExtension() + ".dart");
 			final File outputJavaFile = libFolder.proceed(postfix);
-
+			L.d("------------------------------------------------------------------------------------------------");
 			L.d("converting", java);
 			L.d("        to", outputDartFile);
 
 			try {
 				final String javaCode = java.readToString();
-				outputJavaFile.writeString(javaCode);
+// outputJavaFile.writeString(javaCode);
 				final String dartCode = convert(args, javaCode);
 				outputDartFile.writeString(dartCode);
 			} catch (final IOException e) {
@@ -191,10 +197,12 @@ public class ConvertScarabeiAPI {
 		}
 	}
 
-	private static String convert (final ProcessingArguments args, final String javaCode) throws IOException {
+	private static String convert (final ProcessingArguments args, String javaCode) throws IOException {
 
 // javaCode = javaCode.replaceAll("public", "");
 // javaCode = javaCode.replaceAll("static", "");
+
+		javaCode = javaCode.replaceAll("final", "");
 
 // final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "cd \"C:\\Program Files\\Microsoft SQL Server\" && dir");
 // final ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "ping 8.8.8.8");

@@ -1,0 +1,23 @@
+apply plugin: "java"
+apply plugin: "maven"
+
+
+repositories {
+          	 maven { url 'https://jitpack.io' }
+        	 mavenCentral()
+}
+
+
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['lib/']
+        }
+        resources {
+            
+        }
+    }
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'

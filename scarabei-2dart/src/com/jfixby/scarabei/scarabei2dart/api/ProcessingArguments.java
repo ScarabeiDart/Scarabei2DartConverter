@@ -15,5 +15,6 @@ public class ProcessingArguments {
 	public String versionString;
 	public RelativePath srcPrefix;
 	public FilesList inputJavaFiles;
+	public File input;
 
 }

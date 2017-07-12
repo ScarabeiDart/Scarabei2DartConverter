@@ -1,2 +1,3 @@
-include 'scarabei-2dart'
-
+include "scarabei-2dart"
+include "scarabei-dart-api"
+include "scarabei-dart-red"
